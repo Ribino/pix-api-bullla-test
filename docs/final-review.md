@@ -61,4 +61,4 @@ Nenhum problema **CRÍTICO** encontrado. Arquitetura, código, testes, observabi
 
 **APROVADO PARA ENCERRAMENTO**
 
-`./mvnw clean verify` passa; API, idempotência, Outbox, Kafka, escala de workers, retry, DLQ, reprocessamento, crash/recovery e observabilidade funcionam e estão documentados; load tests e failure tests registrados; README explica a arquitetura; nenhum problema classificado como **CRÍTICO**. Os itens **ATENÇÃO** acima são limitações conscientes e documentadas.
+`./mvnw clean verify` passa; API, idempotência, Outbox, Kafka, escala de workers, retry, DLQ, reprocessamento, crash/recovery e observabilidade funcionam e estão documentados; load tests e failure tests registrados; a arquitetura está explicada em `docs/architecture.md`; nenhum problema classificado como **CRÍTICO**. Os itens **ATENÇÃO** acima são limitações conscientes e documentadas.

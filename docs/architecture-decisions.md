@@ -282,7 +282,7 @@ futura de k6.
 
 ### Métricas
 
-Somente as métricas listadas na tabela de Observabilidade do README foram
+Somente as métricas listadas em `docs/observability.md` foram
 implementadas — outcomes de negócio, um gauge atualizado por agendamento
 (nunca por request), mais métricas auto de Boot/JVM/Kafka. Sem infraestrutura
 customizada para métricas.
