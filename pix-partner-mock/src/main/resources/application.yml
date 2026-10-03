@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: pix-partner-mock
+
+server:
+  port: ${PIX_PARTNER_PORT:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+partner:
+  mock:
+    scenario: ${PARTNER_MOCK_SCENARIO:success}
+    latency-ms: ${PARTNER_MOCK_LATENCY_MS:2000}
+    fail-times: ${PARTNER_MOCK_FAIL_TIMES:2}
+    slow-delay-ms: ${PARTNER_MOCK_SLOW_DELAY_MS:6000}

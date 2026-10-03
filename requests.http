@@ -1,0 +1,164 @@
+### Variáveis (edite se mudou alguma porta)
+@baseUrl = http://localhost:8080
+@mockUrl = http://localhost:8082
+
+### ============================================================
+### Health checks
+### ============================================================
+
+### API - liveness
+GET {{baseUrl}}/actuator/health/liveness HTTP/1.1
+
+### API - readiness na porta de management 8081 (exige PostgreSQL)
+GET http://localhost:8081/actuator/health/readiness HTTP/1.1
+
+### Worker - liveness (porta de management 8083)
+GET http://localhost:8083/actuator/health/liveness HTTP/1.1
+
+### Worker - readiness (exige PostgreSQL + Kafka)
+GET http://localhost:8083/actuator/health/readiness HTTP/1.1
+
+### Partner mock - health
+GET {{mockUrl}}/actuator/health HTTP/1.1
+
+### ============================================================
+### POST /pix - criar transação (id único a cada envio)
+### Resposta esperada: 202 Accepted
+### ============================================================
+
+POST {{baseUrl}}/pix HTTP/1.1
+Content-Type: application/json
+
+{
+  "transactionId": "tx-{{$guid}}",
+  "amount": 150.75,
+  "pixKey": "cliente@email.com",
+  "description": "Pagamento de fatura"
+}
+
+### ============================================================
+### Fluxo encadeado: cria e consulta a mesma transação
+### (usa o transactionId retornado na resposta)
+### ============================================================
+
+### 1. Criar
+POST {{baseUrl}}/pix HTTP/1.1
+Content-Type: application/json
+
+{
+  "transactionId": "tx-demo-{{$timestamp}}",
+  "amount": 42.50,
+  "pixKey": "demo@email.com",
+  "description": "Teste encadeado"
+}
+
+{% client.global.set("createdTx", response.body.transactionId); %}
+
+### 2. Consultar a transação criada acima
+GET {{baseUrl}}/pix/{{createdTx}} HTTP/1.1
+
+### ============================================================
+### Idempotência - mesmo transactionId, mesmo payload
+### 1ª chamada: 202 | 2ª chamada: 202 (PROCESSING) ou 200 (SUCCESS/FAILED)
+### Nada novo é criado
+### ============================================================
+
+### 1. Primeira chamada -> 202
+POST {{baseUrl}}/pix HTTP/1.1
+Content-Type: application/json
+
+{
+  "transactionId": "tx-idempotente-001",
+  "amount": 100.00,
+  "pixKey": "cliente@email.com",
+  "description": "Pagamento de fatura"
+}
+
+### 2. Repetição idêntica -> 202 ou 200, sem duplicar
+POST {{baseUrl}}/pix HTTP/1.1
+Content-Type: application/json
+
+{
+  "transactionId": "tx-idempotente-001",
+  "amount": 100.00,
+  "pixKey": "cliente@email.com",
+  "description": "Pagamento de fatura"
+}
+
+### ============================================================
+### Conflito - mesmo transactionId, payload diferente -> 409
+### ============================================================
+
+POST {{baseUrl}}/pix HTTP/1.1
+Content-Type: application/json
+
+{
+  "transactionId": "tx-idempotente-001",
+  "amount": 999.99,
+  "pixKey": "outro@email.com",
+  "description": "Outro pagamento"
+}
+
+### ============================================================
+### Validação - payload inválido -> 400
+### ============================================================
+
+POST {{baseUrl}}/pix HTTP/1.1
+Content-Type: application/json
+
+{
+  "transactionId": "",
+  "amount": -5,
+  "pixKey": "",
+  "description": "Payload inválido"
+}
+
+### ============================================================
+### GET - transação inexistente -> 404
+### ============================================================
+
+GET {{baseUrl}}/pix/tx-que-nao-existe HTTP/1.1
+
+### ============================================================
+### Partner mock - trocar cenário (útil p/ testar retry/DLQ)
+### success | flaky | always-500 | always-400 | slow
+### ============================================================
+
+### Ver estatísticas do mock
+GET {{mockUrl}}/partner/admin/stats HTTP/1.1
+
+### Forçar falhas transitórias (2x 503 e depois 200)
+POST {{mockUrl}}/partner/admin/scenario HTTP/1.1
+Content-Type: application/json
+
+{
+  "mode": "FLAKY",
+  "latencyMs": 200,
+  "failTimes": 2,
+  "slowDelayMs": 6000
+}
+
+### Forçar erro permanente (sempre 400 -> FAILED, sem retry)
+POST {{mockUrl}}/partner/admin/scenario HTTP/1.1
+Content-Type: application/json
+
+{
+  "mode": "ALWAYS_400",
+  "latencyMs": 100,
+  "failTimes": 2,
+  "slowDelayMs": 6000
+}
+
+### Voltar ao sucesso
+POST {{mockUrl}}/partner/admin/scenario HTTP/1.1
+Content-Type: application/json
+
+{
+  "mode": "SUCCESS",
+  "latencyMs": 200,
+  "failTimes": 2,
+  "slowDelayMs": 6000
+}
+
+### Resetar estatísticas do mock
+POST {{mockUrl}}/partner/admin/reset HTTP/1.1

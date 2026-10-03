@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: pix-worker
+
+  datasource:
+    url: ${PIX_DB_URL:jdbc:postgresql://localhost:5432/pixdb}
+    username: ${PIX_DB_USERNAME:pix}
+    password: ${PIX_DB_PASSWORD:pix}
+    driver-class-name: org.postgresql.Driver
+
+  kafka:
+    bootstrap-servers: ${PIX_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${PIX_KAFKA_CONSUMER_GROUP:pix-processing}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual_immediate
+      observation-enabled: true
+    template:
+      observation-enabled: true
+
+management:
+  server:
+    port: ${PIX_WORKER_MANAGEMENT_PORT:8083}
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,kafka
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+server:
+  port: ${PIX_WORKER_PORT:8084}
+
+pix:
+  kafka:
+    topic: ${PIX_KAFKA_TOPIC:pix.requested}
+    group-id: ${PIX_KAFKA_CONSUMER_GROUP:pix-processing}
+  retry:
+    topic: ${PIX_RETRY_TOPIC:pix.retry}
+    group-id: ${PIX_RETRY_GROUP:pix-retry}
+    max-retries: ${PIX_RETRY_MAX_ATTEMPTS:3}
+    delays: ${PIX_RETRY_DELAYS:5s,15s,30s}
+    pause-check-ms: ${PIX_RETRY_PAUSE_CHECK_MS:1000}
+  dlq:
+    topic: ${PIX_DLQ_TOPIC:pix.dlq}
+  partner:
+    base-url: ${PARTNER_BASE_URL:http://localhost:8082}
+    timeout-ms: ${PARTNER_TIMEOUT_MS:3000}
+    retry-max-attempts: ${PARTNER_RETRY_MAX_ATTEMPTS:3}
+    retry-initial-interval-ms: ${PARTNER_RETRY_INITIAL_INTERVAL_MS:500}
+    retry-multiplier: ${PARTNER_RETRY_MULTIPLIER:2.0}
+    retry-max-interval-ms: ${PARTNER_RETRY_MAX_INTERVAL_MS:2000}

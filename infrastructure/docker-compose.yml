@@ -1,0 +1,87 @@
+name: pix-platform
+
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: pix-postgres
+    environment:
+      POSTGRES_DB: ${PIX_DB_NAME:-pixdb}
+      POSTGRES_USER: ${PIX_DB_USERNAME:-pix}
+      POSTGRES_PASSWORD: ${PIX_DB_PASSWORD:-pix}
+    ports:
+      - "${PIX_DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PIX_DB_USERNAME:-pix} -d ${PIX_DB_NAME:-pixdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pix-network
+
+  kafka:
+    image: apache/kafka:3.9.2
+    container_name: pix-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: CONTROLLER://kafka:9093,PLAINTEXT://kafka:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports:
+      - "${PIX_KAFKA_PORT:-9092}:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - pix-network
+
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    container_name: pix-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "${PIX_PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - pix-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    container_name: pix-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "${PIX_JAEGER_UI_PORT:-16686}:16686"
+      - "${PIX_JAEGER_OTLP_GRPC_PORT:-4317}:4317"
+      - "${PIX_JAEGER_OTLP_HTTP_PORT:-4318}:4318"
+    networks:
+      - pix-network
+
+volumes:
+  postgres-data:
+  kafka-data:
+
+networks:
+  pix-network:
+    name: pix-network

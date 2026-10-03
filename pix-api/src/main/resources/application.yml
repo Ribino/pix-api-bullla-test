@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: pix-api
+
+  datasource:
+    url: ${PIX_DB_URL:jdbc:postgresql://localhost:5432/pixdb}
+    username: ${PIX_DB_USERNAME:pix}
+    password: ${PIX_DB_PASSWORD:pix}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: ${PIX_FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+
+  kafka:
+    bootstrap-servers: ${PIX_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: ${PIX_KAFKA_PRODUCER_ACKS:all}
+    template:
+      observation-enabled: true
+
+pix:
+  kafka:
+    topic-replicas: ${PIX_KAFKA_TOPIC_REPLICAS:1}
+
+outbox:
+  publisher:
+    enabled: ${PIX_OUTBOX_PUBLISHER_ENABLED:true}
+    fixed-delay-ms: ${PIX_OUTBOX_PUBLISHER_FIXED_DELAY_MS:5000}
+    batch-size: ${PIX_OUTBOX_PUBLISHER_BATCH_SIZE:100}
+    send-timeout-ms: ${PIX_OUTBOX_PUBLISHER_SEND_TIMEOUT_MS:10000}
+    stuck-after-minutes: ${PIX_OUTBOX_PUBLISHER_STUCK_AFTER_MINUTES:5}
+  metrics:
+    gauge-interval-ms: ${PIX_OUTBOX_METRICS_INTERVAL_MS:15000}
+
+server:
+  port: ${PIX_API_PORT:8080}
+
+management:
+  server:
+    port: ${PIX_API_MANAGEMENT_PORT:8081}
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
