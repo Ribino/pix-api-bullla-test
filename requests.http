@@ -6,8 +6,8 @@
 ### Health checks
 ### ============================================================
 
-### API - liveness
-GET {{baseUrl}}/actuator/health/liveness HTTP/1.1
+### API - liveness (porta de management 8081, não a 8080)
+GET http://localhost:8081/actuator/health/liveness HTTP/1.1
 
 ### API - readiness na porta de management 8081 (exige PostgreSQL)
 GET http://localhost:8081/actuator/health/readiness HTTP/1.1
