@@ -37,25 +37,25 @@ Content-Type: application/json
 }
 
 ### ============================================================
-### Fluxo encadeado: cria e consulta a mesma transação
-### (usa o transactionId retornado na resposta)
+### Fluxo manual: cria e consulta a mesma transação
+### Edite o @txId abaixo e execute 1 e 2 em ordem
 ### ============================================================
+
+@txId = tx-demo-001
 
 ### 1. Criar
 POST {{baseUrl}}/pix HTTP/1.1
 Content-Type: application/json
 
 {
-  "transactionId": "tx-demo-{{$timestamp}}",
+  "transactionId": "{{txId}}",
   "amount": 42.50,
   "pixKey": "demo@email.com",
-  "description": "Teste encadeado"
+  "description": "Teste manual"
 }
 
-{% client.global.set("createdTx", response.body.transactionId); %}
-
-### 2. Consultar a transação criada acima
-GET {{baseUrl}}/pix/{{createdTx}} HTTP/1.1
+### 2. Consultar (usa o mesmo @txId acima)
+GET {{baseUrl}}/pix/{{txId}} HTTP/1.1
 
 ### ============================================================
 ### Idempotência - mesmo transactionId, mesmo payload
